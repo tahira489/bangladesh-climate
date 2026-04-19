@@ -2,5 +2,5 @@ streamlit
 requests
 pandas
 plotly
-google-generativeai
+groq
 python-dotenv
