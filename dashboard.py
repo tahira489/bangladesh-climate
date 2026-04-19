@@ -3,7 +3,7 @@ import sqlite3
 import os
 import pandas as pd
 import plotly.graph_objects as go
-import google.generativeai as genai
+from groq import Groq
 import requests
 from datetime import datetime
 
@@ -17,12 +17,12 @@ st.set_page_config(
 # Try Streamlit secrets first (cloud), then .env (local)
 try:
     AQICN_TOKEN = st.secrets["AQICN_TOKEN"]
-    GEMINI_KEY  = st.secrets["GEMINI_API_KEY"]
+    GROQ_KEY = st.secrets["GROQ_API_KEY"]
 except Exception:
     from dotenv import load_dotenv
     load_dotenv()
     AQICN_TOKEN = os.getenv("AQICN_TOKEN", "")
-    GEMINI_KEY  = os.getenv("GEMINI_API_KEY", "")
+    GROQ_KEY = os.getenv("GROQ_API_KEY", "")
 
 DB_PATH = "climate.db"
 
@@ -380,12 +380,11 @@ with tab3:
     st.subheader("Climate AI Agent")
     st.caption("Powered by Google Gemini (free) · Knows your live data")
 
-    if not GEMINI_KEY:
-        st.error("GEMINI_API_KEY not set. Add it to Streamlit Secrets (see deployment steps).")
+    if not GROQ_KEY:
+        st.error("GROQ_API_KEY not set. Add it to Streamlit Secrets.")
         st.stop()
 
-    genai.configure(api_key=GEMINI_KEY)
-    model = genai.GenerativeModel("gemini-2.0-flash")
+    groq_client = Groq(api_key=GROQ_KEY)
 
     # Build live context
     live_df = get_latest()
@@ -443,12 +442,15 @@ Keep responses under 200 words. Write in clear prose."""
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
                 try:
-                    full = SYSTEM + "\n\n"
+                    chat_messages = [{"role": "system", "content": SYSTEM}]
                     for m in st.session_state.messages:
-                        role = "User" if m["role"] == "user" else "Assistant"
-                        full += f"{role}: {m['content']}\n"
-                    full += "Assistant:"
-                    reply = model.generate_content(full).text
+                        chat_messages.append({"role": m["role"], "content": m["content"]})
+                    response = groq_client.chat.completions.create(
+                        model="llama-3.3-70b-versatile",
+                        messages=chat_messages,
+                        max_tokens=400,
+                    )
+                    reply = response.choices[0].message.content
                     st.write(reply)
                     st.session_state.messages.append({"role": "assistant", "content": reply})
                 except Exception as e:
