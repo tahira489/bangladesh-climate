@@ -385,7 +385,7 @@ with tab3:
         st.stop()
 
     genai.configure(api_key=GEMINI_KEY)
-    model = genai.GenerativeModel("gemini-1.5-flash")
+    model = genai.GenerativeModel("gemini-2.0-flash")
 
     # Build live context
     live_df = get_latest()
